@@ -1,25 +1,69 @@
-# Transaction Manager for PostgreSQL in Go
+# Менеджер транзакций для PostgreSQL на Go
 
-This library provides a simple and effective transaction manager for working with PostgreSQL in Go. It simplifies transaction management, ensuring that database operations are performed within a transactional context, promoting data consistency and integrity.
+Эта библиотека предоставляет простой и эффективный менеджер транзакций для работы с PostgreSQL на языке Go. Она упрощает управление транзакциями, обеспечивая выполнение операций с базой данных в транзакционном контексте, способствуя согласованности и целостности данных.
 
-## Features
+## Особенности
 
-- Simple API for starting, committing, and rolling back transactions.
-- Easy integration with existing Go projects.
-- Context-based transaction management.
-- Supports transaction isolation levels.
+- Простой API для начала, фиксации и отката транзакций.
+- Легкая интеграция с существующими проектами на Go.
+- Управление транзакциями на основе контекста.
+- Поддержка уровней изоляции транзакций.
 
-## Installation
+## Установка
 
 ```bash
-go get github.com/your-username/tsmanager
+go get github.com/scarymovie/tsmanager
 ```
 
-## Usage
+## Использование
 
-Here is a simple example of how to use the transaction manager:
+Вот простой пример того, как использовать менеджер транзакций:
 
+```go
+package main
 
-## Contribution
+import (
+    "context"
+    "database/sql"
+    "log"
+    
+    "github.com/scarymovie/tsmanager"
+    
+    _ "github.com/lib/pq"
+)
 
-Contributions are welcome! Please create an issue or submit a pull request.
+func main() {
+    db, err := sql.Open("postgres", "your-connection-string")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer db.Close()
+
+    tm := tsmanager.New(db)
+
+    err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
+        // Используйте getQuerier для получения Querier, который будет использовать транзакцию
+        querier := tsmanager.GetQuerier(ctx, db)
+        
+        // Выполняйте операции с базой данных с помощью querier
+        _, err := querier.ExecContext(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "John Doe", "john@example.com")
+        if err != nil {
+            return err
+        }
+        
+        // Здесь можно выполнять дополнительные операции
+        // Если какая-либо операция возвращает ошибку, транзакция будет откачена
+        return nil
+    })
+    
+    if err != nil {
+        log.Fatal(err)
+    }
+    
+    log.Println("Транзакция успешно завершена")
+}
+```
+
+## Участие в разработке
+
+Приветствуется участие! Пожалуйста, создайте issue или отправьте pull request.
