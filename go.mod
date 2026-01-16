@@ -1,3 +1,3 @@
-module github.com/scarymovie/tsmanager
+module github.com/scarymovie/txmanager
 
 go 1.25

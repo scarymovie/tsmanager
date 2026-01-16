@@ -12,7 +12,7 @@ This library provides a simple and effective transaction manager for working wit
 ## Installation
 
 ```bash
-go get github.com/scarymovie/tsmanager
+go get github.com/scarymovie/txmanager
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ import (
     "database/sql"
     "log"
     
-    "github.com/scarymovie/tsmanager"
+    "github.com/scarymovie/txmanager"
     
     _ "github.com/lib/pq"
 )
@@ -39,11 +39,11 @@ func main() {
     }
     defer db.Close()
 
-    tm := tsmanager.New(db)
+    tm := txmanager.New(db)
 
     err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
         // Use getQuerier to get a Querier that will use the transaction
-        querier := tsmanager.GetQuerier(ctx, db)
+        querier := txmanager.GetQuerier(ctx, db)
         
         // Perform database operations using the querier
         _, err := querier.ExecContext(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "John Doe", "john@example.com")
