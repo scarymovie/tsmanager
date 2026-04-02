@@ -18,6 +18,8 @@ go get github.com/scarymovie/txmanager
 
 ## Использование
 
+### Базовый пример
+
 Вот простой пример того, как использовать менеджер транзакций:
 
 ```go
@@ -64,6 +66,73 @@ func main() {
     log.Println("Транзакция успешно завершена")
 }
 ```
+
+### Конфигурация пула соединений
+
+Библиотека `pgxpool` предоставляет гибкие настройки для управления пулом соединений:
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "time"
+
+    "github.com/jackc/pgx/v5/pgxpool"
+    "github.com/scarymovie/txmanager"
+)
+
+func main() {
+    ctx := context.Background()
+    
+    // Создаём конфигурацию пула
+    poolConfig, err := pgxpool.ParseConfig("postgres://user:password@localhost:5432/dbname")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Настраиваем параметры пула
+    poolConfig.MaxConns = 25              // Максимальное количество соединений
+    poolConfig.MinConns = 5               // Минимальное количество соединений
+    poolConfig.MaxConnLifetime = time.Hour // Максимальное время жизни соединения
+    poolConfig.MaxConnIdleTime = 30 * time.Minute // Максимальное время простоя соединения
+
+    // Опционально: настройка health check
+    poolConfig.HealthCheckPeriod = time.Minute
+
+    // Создаём пул с конфигурацией
+    pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer pool.Close()
+
+    tm := txmanager.New(pool)
+
+    err = tm.WithinTransaction(ctx, func(ctx context.Context) error {
+        querier := txmanager.GetQuerier(ctx, pool)
+        _, err := querier.Exec(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "John Doe", "john@example.com")
+        return err
+    })
+
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    log.Println("Транзакция успешно завершена")
+}
+```
+
+#### Основные параметры конфигурации:
+
+| Параметр | Описание |
+|----------|----------|
+| `MaxConns` | Максимальное количество соединений в пуле (по умолчанию: 4) |
+| `MinConns` | Минимальное количество соединений в пуле (по умолчанию: 0) |
+| `MaxConnLifetime` | Максимальное время жизни соединения перед закрытием |
+| `MaxConnIdleTime` | Максимальное время простоя соединения перед закрытием |
+| `HealthCheckPeriod` | Период проверки здоровья соединений в пуле |
 
 ## Участие в разработке
 
