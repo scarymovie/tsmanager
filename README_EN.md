@@ -8,6 +8,7 @@ This library provides a simple and effective transaction manager for working wit
 - Easy integration with existing Go projects.
 - Context-based transaction management.
 - Supports transaction isolation levels.
+- Uses `pgxpool` for efficient connection pooling.
 
 ## Installation
 
@@ -24,42 +25,42 @@ package main
 
 import (
     "context"
-    "database/sql"
     "log"
-    
+
+    "github.com/jackc/pgx/v5/pgxpool"
     "github.com/scarymovie/txmanager"
-    
-    _ "github.com/lib/pq"
 )
 
 func main() {
-    db, err := sql.Open("postgres", "your-connection-string")
+    ctx := context.Background()
+    
+    pool, err := pgxpool.New(ctx, "postgres://user:password@localhost:5432/dbname")
     if err != nil {
         log.Fatal(err)
     }
-    defer db.Close()
+    defer pool.Close()
 
-    tm := txmanager.New(db)
+    tm := txmanager.New(pool)
 
-    err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
-        // Use getQuerier to get a Querier that will use the transaction
-        querier := txmanager.GetQuerier(ctx, db)
-        
+    err = tm.WithinTransaction(ctx, func(ctx context.Context) error {
+        // Use GetQuerier to get a Querier that will use the transaction
+        querier := txmanager.GetQuerier(ctx, pool)
+
         // Perform database operations using the querier
-        _, err := querier.ExecContext(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "John Doe", "john@example.com")
+        _, err := querier.Exec(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "John Doe", "john@example.com")
         if err != nil {
             return err
         }
-        
+
         // More operations can be performed here
         // If any operation returns an error, the transaction will be rolled back
         return nil
     })
-    
+
     if err != nil {
         log.Fatal(err)
     }
-    
+
     log.Println("Transaction completed successfully")
 }
 ```

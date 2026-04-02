@@ -8,6 +8,7 @@
 - Легкая интеграция с существующими проектами на Go.
 - Управление транзакциями на основе контекста.
 - Поддержка уровней изоляции транзакций.
+- Использование `pgxpool` для эффективного управления соединениями.
 
 ## Установка
 
@@ -24,42 +25,42 @@ package main
 
 import (
     "context"
-    "database/sql"
     "log"
-    
+
+    "github.com/jackc/pgx/v5/pgxpool"
     "github.com/scarymovie/txmanager"
-    
-    _ "github.com/lib/pq"
 )
 
 func main() {
-    db, err := sql.Open("postgres", "your-connection-string")
+    ctx := context.Background()
+    
+    pool, err := pgxpool.New(ctx, "postgres://user:password@localhost:5432/dbname")
     if err != nil {
         log.Fatal(err)
     }
-    defer db.Close()
+    defer pool.Close()
 
-    tm := txmanager.New(db)
+    tm := txmanager.New(pool)
 
-    err = tm.WithinTransaction(context.Background(), func(ctx context.Context) error {
-        // Используйте getQuerier для получения Querier, который будет использовать транзакцию
-        querier := txmanager.GetQuerier(ctx, db)
-        
+    err = tm.WithinTransaction(ctx, func(ctx context.Context) error {
+        // Используйте GetQuerier для получения Querier, который будет использовать транзакцию
+        querier := txmanager.GetQuerier(ctx, pool)
+
         // Выполняйте операции с базой данных с помощью querier
-        _, err := querier.ExecContext(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "John Doe", "john@example.com")
+        _, err := querier.Exec(ctx, "INSERT INTO users (name, email) VALUES ($1, $2)", "John Doe", "john@example.com")
         if err != nil {
             return err
         }
-        
+
         // Здесь можно выполнять дополнительные операции
         // Если какая-либо операция возвращает ошибку, транзакция будет откачена
         return nil
     })
-    
+
     if err != nil {
         log.Fatal(err)
     }
-    
+
     log.Println("Транзакция успешно завершена")
 }
 ```
